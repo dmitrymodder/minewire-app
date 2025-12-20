@@ -1,0 +1,48 @@
+name: minewire_app
+description: "Minewire VPN Tunnel Client"
+publish_to: "none"
+version: 25.12.3+4
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.2.2
+  flutter_highlight: ^0.7.0
+  highlight: ^0.7.0
+  dynamic_color: ^1.8.1
+  flutter_svg: ^2.2.3
+  permission_handler: ^11.3.1
+  uuid: ^3.0.7
+  system_tray: ^2.0.0
+  window_manager: ^0.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.svg
+    - assets/logo_full.svg
+    - assets/icon_foreground.png
+    - assets/app_icon.ico
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon_foreground.png"
+  min_sdk_android: 21 
+  adaptive_icon_background: "#272822"
+  adaptive_icon_foreground: "assets/icon_foreground.png"
+  windows:
+    generate: true
+    image_path: "assets/app_icon_windows.png"
+
