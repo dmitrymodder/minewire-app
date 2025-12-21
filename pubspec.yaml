@@ -1,7 +1,7 @@
 name: minewire_app
 description: "Minewire VPN Tunnel Client"
 publish_to: "none"
-version: 25.12.3+4
+version: 25.12.4+1
 
 environment:
   sdk: ^3.5.0

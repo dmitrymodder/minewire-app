@@ -53,10 +53,12 @@ Future<void> main() async {
   final prefs = await SharedPreferences.getInstance();
   final themeModeIndex = prefs.getInt('theme_mode') ?? ThemeMode.system.index;
   final useDynamicColor = prefs.getBool('use_dynamic_color') ?? true;
+  final usePaleColor = prefs.getBool('use_pale_color') ?? false;
 
   runApp(MinewireApp(
     initialThemeMode: ThemeMode.values[themeModeIndex],
     initialUseDynamicColor: useDynamicColor,
+    initialUsePaleColor: usePaleColor,
   ));
 }
 
@@ -115,11 +117,13 @@ Future<void> _initSystemTray() async {
 class MinewireApp extends StatefulWidget {
   final ThemeMode initialThemeMode;
   final bool initialUseDynamicColor;
+  final bool initialUsePaleColor;
 
   const MinewireApp({
     super.key,
     required this.initialThemeMode,
     required this.initialUseDynamicColor,
+    required this.initialUsePaleColor,
   });
 
   @override
@@ -129,12 +133,14 @@ class MinewireApp extends StatefulWidget {
 class _MinewireAppState extends State<MinewireApp> {
   late ThemeMode _themeMode;
   late bool _useDynamicColor;
+  late bool _usePaleColor;
 
   @override
   void initState() {
     super.initState();
     _themeMode = widget.initialThemeMode;
     _useDynamicColor = widget.initialUseDynamicColor;
+    _usePaleColor = widget.initialUsePaleColor;
   }
 
   Future<void> _updateThemeMode(ThemeMode mode) async {
@@ -149,6 +155,12 @@ class _MinewireAppState extends State<MinewireApp> {
     await prefs.setBool('use_dynamic_color', use);
   }
 
+  Future<void> _updatePaleColor(bool use) async {
+    setState(() => _usePaleColor = use);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('use_pale_color', use);
+  }
+
   @override
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
@@ -156,10 +168,19 @@ class _MinewireAppState extends State<MinewireApp> {
         ColorScheme lightScheme;
         ColorScheme darkScheme;
         
-        bool canUseDynamic = _useDynamicColor && !Platform.isWindows; // Disable dynamic color on Windows
+        bool canUseDynamic = _useDynamicColor; // Dynamic color now supported on Windows too
 
         if (lightDynamic != null && canUseDynamic) {
-            lightScheme = lightDynamic.copyWith(brightness: Brightness.light);
+            var lightSeed = lightDynamic.primary;
+            // Generate scheme from seed to control saturation if needed? 
+            // Actually lightDynamic is already a scheme. 
+            // If we want pale colors, we might need to re-generate from the seed with lower saturation.
+            
+            if (_usePaleColor) {
+                 lightScheme = ColorScheme.fromSeed(seedColor: lightSeed, brightness: Brightness.light, dynamicSchemeVariant: DynamicSchemeVariant.neutral);
+            } else {
+                 lightScheme = lightDynamic.copyWith(brightness: Brightness.light);
+            }
         } else {
             lightScheme = ColorScheme.fromSeed(
                 seedColor: Colors.deepPurple,
@@ -168,7 +189,12 @@ class _MinewireAppState extends State<MinewireApp> {
         }
 
         if (darkDynamic != null && canUseDynamic) {
-            darkScheme = darkDynamic.copyWith(brightness: Brightness.dark);
+            var darkSeed = darkDynamic.primary;
+             if (_usePaleColor) {
+                 darkScheme = ColorScheme.fromSeed(seedColor: darkSeed, brightness: Brightness.dark, dynamicSchemeVariant: DynamicSchemeVariant.neutral);
+            } else {
+                 darkScheme = darkDynamic.copyWith(brightness: Brightness.dark);
+            }
         } else {
             darkScheme = ColorScheme.fromSeed(
                 seedColor: Colors.deepPurple,
@@ -190,8 +216,10 @@ class _MinewireAppState extends State<MinewireApp> {
           home: MainScreen(
              themeMode: _themeMode,
              useDynamicColor: _useDynamicColor,
+             usePaleColor: _usePaleColor,
              onThemeModeChanged: _updateThemeMode,
              onDynamicColorChanged: _updateDynamicColor,
+             onPaleColorChanged: _updatePaleColor,
           ),
         );
       },
@@ -202,15 +230,19 @@ class _MinewireAppState extends State<MinewireApp> {
 class MainScreen extends StatefulWidget {
   final ThemeMode themeMode;
   final bool useDynamicColor;
+  final bool usePaleColor;
   final Function(ThemeMode) onThemeModeChanged;
   final Function(bool) onDynamicColorChanged;
+  final Function(bool) onPaleColorChanged;
 
   const MainScreen({
       super.key, 
       required this.themeMode, 
       required this.useDynamicColor,
+      required this.usePaleColor,
       required this.onThemeModeChanged,
       required this.onDynamicColorChanged,
+      required this.onPaleColorChanged,
   });
 
   @override
@@ -395,8 +427,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver, Wi
       SettingsPage(
         themeMode: widget.themeMode,
         useDynamicColor: widget.useDynamicColor,
+        usePaleColor: widget.usePaleColor,
         onThemeModeChanged: widget.onThemeModeChanged,
         onDynamicColorChanged: widget.onDynamicColorChanged,
+        onPaleColorChanged: widget.onPaleColorChanged,
       ),
       const AboutPage(),
     ];

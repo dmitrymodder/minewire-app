@@ -5,15 +5,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SettingsPage extends StatefulWidget {
   final ThemeMode themeMode;
   final bool useDynamicColor;
+  final bool usePaleColor;
   final Function(ThemeMode) onThemeModeChanged;
   final Function(bool) onDynamicColorChanged;
+  final Function(bool) onPaleColorChanged;
 
   const SettingsPage({
     super.key,
     required this.themeMode,
     required this.useDynamicColor,
+    required this.usePaleColor,
     required this.onThemeModeChanged,
     required this.onDynamicColorChanged,
+    required this.onPaleColorChanged,
   });
 
   @override
@@ -116,16 +120,38 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildDynamicColorSection(BuildContext context) {
-    if (Platform.isWindows) return const SizedBox.shrink(); // Hide on Windows
-    return SwitchListTile(
-      title: const Text('Динамические цвета'),
-      subtitle: const Text('Использовать цвета из обоев (Material You)'),
-      value: widget.useDynamicColor,
-      onChanged: widget.onDynamicColorChanged,
-      secondary: Icon(
-        Icons.palette_outlined,
-        color: Theme.of(context).colorScheme.primary,
-      ),
+    String title = "Динамические цвета";
+    String subtitle = "Использовать цвета из обоев (Material You)";
+    
+    if (Platform.isWindows) {
+        title = "Акцентный цвет Windows";
+        subtitle = "Использовать системный цвет";
+    }
+
+    return Column(
+        children: [
+            SwitchListTile(
+              title: Text(title),
+              subtitle: Text(subtitle),
+              value: widget.useDynamicColor,
+              onChanged: widget.onDynamicColorChanged,
+              secondary: Icon(
+                Icons.palette_outlined,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            if (widget.useDynamicColor)
+                SwitchListTile(
+                  title: const Text('Бледные тона'),
+                  subtitle: const Text('Использовать менее насыщенные цвета'),
+                  value: widget.usePaleColor,
+                  onChanged: widget.onPaleColorChanged,
+                  secondary: Icon(
+                    Icons.contrast,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+        ],
     );
   }
 

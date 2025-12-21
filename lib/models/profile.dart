@@ -6,7 +6,7 @@ class ServerProfile {
   String serverAddress;
   String password;
   String? configText; // Legacy support
-  // Legacy holder not needed, we migrate on load
+  String? subscriptionUrl; // URL from which this profile was imported/updated
 
   ServerProfile({
     required this.id,
@@ -14,6 +14,7 @@ class ServerProfile {
     required this.serverAddress,
     required this.password,
     this.configText,
+    this.subscriptionUrl,
   });
 
   factory ServerProfile.createDefault() {
@@ -31,6 +32,7 @@ class ServerProfile {
       'name': name,
       'server_address': serverAddress,
       'password': password,
+      'subscription_url': subscriptionUrl,
     };
   }
 
@@ -54,6 +56,7 @@ class ServerProfile {
       serverAddress: address,
       password: pwd,
       configText: json['config_text'], // Keep reference if needed
+      subscriptionUrl: json['subscription_url'],
     );
   }
 }

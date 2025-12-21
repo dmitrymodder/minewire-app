@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
-import 'models/profile.dart';
+import 'models/profile.dart'; // Profile model
 import 'services/minewire_core.dart';
 
 class ConfigPage extends StatefulWidget {
@@ -22,11 +22,25 @@ class ConfigPage extends StatefulWidget {
 
 class _ConfigPageState extends State<ConfigPage> {
   List<ServerProfile> _profiles = [];
+  List<String> _subscriptions = [];
 
   @override
   void initState() {
     super.initState();
     _loadProfiles();
+    _loadSubscriptions();
+  }
+
+  Future<void> _loadSubscriptions() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _subscriptions = prefs.getStringList('subscriptions') ?? [];
+    });
+  }
+
+  Future<void> _saveSubscriptions() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList('subscriptions', _subscriptions);
   }
 
   Future<void> _loadProfiles() async {
@@ -87,10 +101,124 @@ class _ConfigPageState extends State<ConfigPage> {
                 _importFromLink();
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.rss_feed),
+              title: const Text('Добавить подписку'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _addSubscription();
+              },
+            ),
           ],
         ),
       ),
     );
+  }
+
+  void _addSubscription() {
+      // Dialog to enter URL
+      final controller = TextEditingController();
+      showDialog(
+        context: context, 
+        builder: (ctx) => AlertDialog(
+            title: const Text("Добавить подписку"),
+            content: TextField(
+                controller: controller,
+                decoration: const InputDecoration(labelText: "URL подписки"),
+            ),
+            actions: [
+                TextButton(child: const Text("Отмена"), onPressed: () => Navigator.pop(ctx)),
+                TextButton(child: const Text("Добавить"), onPressed: () async {
+                    Navigator.pop(ctx);
+                    if (controller.text.isNotEmpty) {
+                        setState(() {
+                            _subscriptions.add(controller.text);
+                        });
+                        await _saveSubscriptions();
+                        _updateAllSubscriptions();
+                    }
+                }),
+            ],
+        )
+      );
+  }
+
+  Future<void> _updateAllSubscriptions() async {
+    if (_subscriptions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Нет активных подписок")));
+        return;
+    }
+
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 10);
+    int addedCount = 0;
+    int updatedCount = 0;
+    
+    // Core for parsing links
+    final core = Platform.isWindows ? MinewireCoreWindows() : MinewireCoreAndroid();
+    
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Обновление подписок...")));
+
+    for (String url in _subscriptions) {
+        try {
+            final request = await client.getUrl(Uri.parse(url));
+            final response = await request.close();
+            if (response.statusCode == 200) {
+                 final body = await response.transform(utf8.decoder).join();
+                 final lines = const LineSplitter().convert(body);
+                 
+                 for (String line in lines) {
+                     line = line.trim();
+                     if (line.isEmpty) continue;
+                     
+                     // Support both direct mw:// links and maybe wrapped text? assuming mw:// for now
+                     // If the line doesn't start with mw://, skip or check if it's a valid link?
+                     // User said: "Nick2.txt where will be one line with mw://"
+                     if (!line.startsWith("mw://")) continue;
+
+                     final parsed = await core.parseLink(line);
+                     if (parsed.containsKey('error')) continue;
+                      
+                     final address = parsed['server']?.toString() ?? "";
+                     final pwd = parsed['password']?.toString() ?? "";
+                     final name = parsed['name']?.toString() ?? "Imported";
+                      
+                     // Find existing profile linked to this subscription
+                     // We match by URL and Name (since address/pass might change)
+                     // Or match by URL and Address?
+                     // Let's match by SubscriptionURL AND Name as the primary key from that sub
+                     final index = _profiles.indexWhere((p) => 
+                        p.subscriptionUrl == url && p.name == name
+                     );
+                      
+                     if (index >= 0) {
+                        // Update
+                        _profiles[index].serverAddress = address;
+                        _profiles[index].password = pwd;
+                        updatedCount++;
+                     } else {
+                        // Create New
+                        final newP = ServerProfile.createDefault();
+                        newP.serverAddress = address;
+                        newP.password = pwd;
+                        newP.name = name;
+                        newP.subscriptionUrl = url;
+                        _profiles.add(newP);
+                        addedCount++;
+                     }
+                 }
+            }
+        } catch (e) {
+            print("Error updating subscription $url: $e");
+        }
+    }
+    
+    setState((){});
+    _saveProfiles();
+    
+    if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Готово. Добавлено: $addedCount, Обновлено: $updatedCount")));
+    }
   }
 
   Future<void> _importFromLink() async {
@@ -146,11 +274,15 @@ class _ConfigPageState extends State<ConfigPage> {
   }
 
   void _deleteProfile(ServerProfile profile) {
+    bool isSubscription = profile.subscriptionUrl != null;
+    
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Удалить профиль?"),
-        content: Text("Вы уверены, что хотите удалить ${profile.name}?"),
+        content: Text(isSubscription 
+            ? "Этот профиль добавлен через подписку.\nУдалить его и отписаться?" 
+            : "Вы уверены, что хотите удалить ${profile.name}?"),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Отмена")),
           TextButton(
@@ -158,8 +290,12 @@ class _ConfigPageState extends State<ConfigPage> {
               Navigator.pop(ctx);
               setState(() {
                 _profiles.removeWhere((p) => p.id == profile.id);
+                if (isSubscription) {
+                    _subscriptions.remove(profile.subscriptionUrl);
+                }
               });
               _saveProfiles();
+              if (isSubscription) _saveSubscriptions();
             },
             child: const Text("Удалить", style: TextStyle(color: Colors.red)),
           ),
@@ -193,6 +329,13 @@ class _ConfigPageState extends State<ConfigPage> {
       appBar: AppBar(
         title: const Text('Профили'),
         centerTitle: true,
+        actions: [
+             IconButton(
+                 icon: const Icon(Icons.sync), 
+                 onPressed: _updateAllSubscriptions, 
+                 tooltip: "Обновить подписки"
+             ),
+        ],
       ),
       body: _profiles.isEmpty
           ? const Center(child: Text("Нет профилей"))
