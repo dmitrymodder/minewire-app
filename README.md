@@ -1,191 +1,159 @@
-# Minewire VPN
+# Minewire Client
 
-Кроссплатформенный VPN-клиент, маскирующийся под Minecraft клиент для обхода ограничений и создания защищенных туннелей.
+Cross-platform VPN client that masquerades as a Minecraft client to establish encrypted tunnels and bypass network restrictions.
 
-## Возможности
+## Features
 
-- 🔒 **Шифрование AES-GCM** - весь трафик шифруется и маскируется под пакеты Minecraft
-- 🎮 **Полная маскировка** - неотличим от настоящего Minecraft клиента при DPI
-- 🚀 **Мультиплексирование** - множественные соединения через один туннель (yamux)
+- **AES-GCM Encryption** - All traffic encrypted and disguised as Minecraft packets
+- **Deep Packet Inspection Evasion** - Indistinguishable from genuine Minecraft client traffic
+- **Stream Multiplexing** - Multiple connections through single tunnel (yamux)
 
-## Скриншоты
+## Platforms
 
-<div align="center">
-<img src="screenshots/home.jpg" width="300">
-<img src="screenshots/settings.jpg" width="300">
-</div>
+- **Android**: 5.0 (API 21) or newer
+- **Windows**: 10/11
 
-## Требования
+## Installation
 
-### Для использования
+### Pre-built Releases
 
-- **Android**: Android 5.0 (API 21) или новее
-- **Windows**: Windows 10/11
+Download from [Releases](https://github.com/dmitrymodder/minewire-app/releases):
 
-### Для сборки из исходников
+- **Android**: `minewire-app-arm64-v8a-release.apk` (recommended for modern devices)
+- **Windows**: `minewire-windows.zip` (extract and run `minewire_app.exe`)
 
-- **Flutter SDK**: 3.5.0 или новее
-- **Go**: 1.19 или новее
-- **gomobile**: для сборки Android библиотеки
-- **Android SDK**: для сборки Android приложения
-- **Visual Studio Build Tools**: для сборки Windows приложения
+### Build from Source
 
-## Установка
+#### Prerequisites
 
-### Из готовых релизов
+- **Flutter SDK**: 3.5.0+
+- **Go**: 1.19+
+- **gomobile**: for Android library compilation
+- **Android SDK**: for Android builds
+- **Visual Studio Build Tools**: for Windows builds
 
-Скачайте последнюю версию из раздела [Releases](https://github.com/dmitrymodder/minewire-app/releases):
-
-- **Android**: `minewire-app-arm64-v8a-release.apk` (для большинства современных устройств)
-- **Windows**: `minewire-windows.zip` (распакуйте и запустите `minewire_app.exe`)
-
-### Сборка из исходников
-
-#### Подготовка
-
-1. **Установите Flutter**:
-   ```bash
-   # Следуйте инструкциям на https://flutter.dev/docs/get-started/install
-   flutter doctor
-   ```
-
-2. **Установите Go**:
-   ```bash
-   # Скачайте с https://golang.org/dl/
-   go version  # Проверка установки
-   ```
-
-3. **Установите gomobile** (для Android):
-   ```bash
-   go install golang.org/x/mobile/cmd/gomobile@latest
-   gomobile init
-   ```
-
-#### Сборка для Android
+#### Android Build
 
 ```bash
-# 1. Клонируйте репозиторий
+# Clone repository
 git clone https://github.com/dmitrymodder/minewire-app.git
 cd minewire-app
 
-# 2. Соберите Go библиотеку
+# Build Go library
 cd go
 gomobile bind -target=android -o ../android/app/libs/minewire.aar -androidapi 21 -javapkg=com.uberwelt.libminewire .
 cd ..
 
-# 3. Установите зависимости Flutter
+# Install Flutter dependencies
 flutter pub get
 
-# 4. Соберите APK
+# Build APK
 flutter build apk --release --split-per-abi
 
-# Готовые APK будут в build/app/outputs/flutter-apk/
-# - app-armeabi-v7a-release.apk (для старых устройств)
-# - app-arm64-v8a-release.apk (для современных устройств, рекомендуется)
-# - app-x86_64-release.apk (для эмуляторов)
+# Output: build/app/outputs/flutter-apk/
+# - app-arm64-v8a-release.apk (recommended)
+# - app-armeabi-v7a-release.apk (legacy devices)
 ```
 
-#### Сборка для Windows
+#### Windows Build
 
 ```bash
-# 1. Клонируйте репозиторий (если еще не сделали)
+# Clone repository
 git clone https://github.com/dmitrymodder/minewire-app.git
 cd minewire-app
 
-# 2. Установите зависимости Flutter
+# Install dependencies
 flutter pub get
 
-# 3. Соберите Windows приложение
+# Build Windows app
 flutter build windows
 
-# Готовое приложение будет в build/windows/x64/runner/Release/
+# Output: build/windows/x64/runner/Release/
 ```
 
-## Использование
+## Usage
 
-### Первый запуск
+### Initial Setup
 
-1. **Запустите приложение**
-2. **Перейдите в раздел "Конфиг"**
-3. **Создайте новый профиль**:
-   - Введите адрес сервера (например: `server.example.com:25565`)
-   - Введите пароль (получите у администратора сервера)
-   - Дайте профилю понятное имя
+1. Open app and navigate to "Config" section
+2. Create new profile:
+   - Server address (e.g., `server.example.com:25565`)
+   - Password (provided by server administrator)
+   - Profile name
+3. Select created profile
+4. Return to home screen and tap "Connect"
 
-4. **Выберите созданный профиль** (нажмите на него)
-5. **Вернитесь на главный экран** и нажмите "Подключить"
+### Import Configuration
 
-### Импорт конфигурации по ссылке
+Paste link in format `mw://password@server:port#ProfileName` to auto-configure.
 
-Если у вас есть ссылка формата `mw://password@server:port#ProfileName`, вы можете вставить её в клиент.
+### Settings
 
-### Настройки
+Configure in "Settings" section:
 
-В разделе "Настройки" вы можете:
+- **Proxy Type**: SOCKS5 (default) or HTTP
+- **Local Port**: default `:1080`
+- **Theme**: light, dark, or system
+- **Dynamic Colors**: Android 12+ only
 
-- **Изменить тип прокси**: SOCKS5 (по умолчанию) или HTTP
-- **Изменить локальный порт**: по умолчанию `:1080`
-- **Настроить тему**: светлая, темная или системная
-- **Включить/отключить динамические цвета** (только Android 12+)
-  
-## Архитектура
+## Architecture
 
-### Компоненты
+### Components
 
-- **Flutter UI** (`lib/`) - кроссплатформенный интерфейс на Dart
-- **Go Core** (`go/`) - ядро VPN/прокси на Go, компилируется в:
-  - Android: AAR библиотека через gomobile
-  - Windows: используется напрямую через FFI
-- **Platform Channels** - связь между Dart и Go кодом
+- **Flutter UI** (`lib/`) - Cross-platform Dart interface
+- **Go Core** (`go/`, `go-windows/`) - VPN/proxy engine, compiled as:
+  - Android: AAR library via gomobile
+  - Windows: Direct FFI integration
+- **Platform Channels** - Dart ↔ Go communication bridge
 
-### Как это работает
+### How It Works
 
-1. **Маскировка**: Клиент подключается к серверу как Minecraft клиент
-2. **Аутентификация**: Генерирует имя пользователя из хеша пароля
-3. **Туннелирование**: Устанавливает зашифрованный yamux туннель
-4. **Шифрование**: Весь трафик шифруется AES-GCM и маскируется под пакеты чанков Minecraft
-5. **Проксирование**: 
-   - Android: tun2socks перехватывает весь трафик и отправляет через туннель
-   - Windows: локальный SOCKS5/HTTP прокси перенаправляет трафик
+1. **Connection**: Client initiates Minecraft protocol handshake with server
+2. **Authentication**: Username derived from SHA256(password), matching server's validation logic
+3. **Tunnel Establishment**: Encrypted yamux multiplexed session over Minecraft connection
+4. **Traffic Encapsulation**: Data encrypted with AES-GCM, embedded in Minecraft Plugin Message packets (0x0D)
+   - Uses `minecraft:brand` or `minewire:tunnel` channels
+   - Each write: random nonce + AEAD encrypted payload
+5. **Proxying**:
+   - **Android**: tun2socks intercepts all device traffic, routes through tunnel
+   - **Windows**: Local SOCKS5/HTTP proxy redirects application traffic
 
-## Разработка
+The protocol leverages Minecraft's plugin messaging system: Plugin Message packets can contain arbitrary data and are expected during gameplay, making them ideal carriers for encrypted tunnel traffic.
 
-### Структура проекта
+### Project Structure
 
 ```
 minewire_app/
-├── android/          # Android специфичный код
-├── windows/          # Windows специфичный код
-├── lib/              # Flutter/Dart код
-│   ├── main.dart           # Точка входа
-│   ├── config_page.dart    # Управление профилями
-│   ├── settings_page.dart  # Настройки
-│   ├── about_page.dart     # О приложении
-│   ├── models/             # Модели данных
-│   └── services/           # Сервисы (platform channels)
-├── go/               # Go библиотека (Android)
-│   ├── minewire.go   # Основная логика
-│   ├── tunnel.go     # Туннель к серверу
-│   ├── protocol.go   # Minecraft протокол
-│   └── proxy.go      # SOCKS5/HTTP прокси
-├── go-windows/       # Go библиотека (Windows)
-└── assets/           # Ресурсы (иконки, изображения)
+├── android/          # Android-specific code
+├── windows/          # Windows-specific code
+├── lib/              # Flutter/Dart code
+│   ├── main.dart           # Entry point
+│   ├── config_page.dart    # Profile management
+│   ├── settings_page.dart  # Settings UI
+│   ├── models/             # Data models
+│   └── services/           # Platform channels
+├── go/               # Go library (Android)
+│   ├── minewire.go   # Core logic
+│   ├── tunnel.go     # Server tunnel
+│   ├── protocol.go   # Minecraft protocol
+│   └── proxy.go      # SOCKS5/HTTP proxy
+└── go-windows/       # Go library (Windows)
 ```
 
-### Запуск в режиме разработки
+### Development
 
 ```bash
-# Android (эмулятор или устройство)
+# Run on Android (emulator or device)
 flutter run
 
-# Windows
+# Run on Windows
 flutter run -d windows
 ```
 
-## Лицензия
+## License
 
 MIT
 
-## Связанные проекты
+## Related Projects
 
-- [minewire](https://github.com/dmitrymodder/minewire) - серверная часть Minewire
+- [minewire](https://github.com/dmitrymodder/minewire) - Minewire server implementation
