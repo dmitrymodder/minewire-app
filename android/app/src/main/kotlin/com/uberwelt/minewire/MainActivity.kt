@@ -62,6 +62,11 @@ class MainActivity: FlutterActivity() {
                 } catch (e: Exception) {
                     result.error("PARSE_ERROR", e.message, null)
                 }
+
+            } else if (call.method == "updateConfig") {
+                val rules = call.argument<String>("rules") ?: ""
+                Minewire.updateConfig(rules)
+                result.success(true)
             } else {
                 result.notImplemented()
             }

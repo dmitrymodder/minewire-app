@@ -34,7 +34,7 @@ class _AboutPageState extends State<AboutPage> {
     }
 
     setState(() {
-      _version = '25.12.4';
+      _version = '26.1.1';
       _platformName = platform;
     });
   }
@@ -74,13 +74,13 @@ class _AboutPageState extends State<AboutPage> {
               ),
               const SizedBox(height: 16),
               const Text(
-                'Стелс-протокол туннелирования трафика под видом Minecraft (Java Edition 1.21.10).',
+                'Стелс-протокол туннелирования трафика под видом Minecraft (Java Edition).',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 48),
               const Text(
-                '© 2025 MIT License',
+                '© 2026 MIT License',
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],

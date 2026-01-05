@@ -20,6 +20,36 @@ import (
 	"github.com/eycorsican/go-tun2socks/proxy/socks"
 )
 
+// ProtectCallback allows Android VpnService to protect the socket
+type ProtectCallback interface {
+	Protect(fd int) bool
+}
+
+var protector ProtectCallback
+
+// SetProtectCallback sets the callback for socket protection
+func SetProtectCallback(cb ProtectCallback) {
+	protector = cb
+}
+
+// UpdateConfig updates the split tunneling rules
+func UpdateConfig(rulePaths string) {
+	st := GetSplitTunnelManager()
+	st.ClearRules()
+
+	paths := strings.Split(rulePaths, ",")
+	for _, path := range paths {
+		if path == "" {
+			continue
+		}
+		if err := st.LoadRuleFile(path); err != nil {
+			log.Printf("Failed to load rule file %s: %v", path, err)
+		} else {
+			log.Printf("Loaded rule file: %s", path)
+		}
+	}
+}
+
 // Ping measures latency to the given server address (host:port).
 // Returns latency in milliseconds, or -1 on error.
 func Ping(serverAddr string) int64 {

@@ -9,6 +9,7 @@ import 'settings_page.dart';
 import 'config_page.dart';
 import 'models/profile.dart';
 import 'services/minewire_core.dart'; // Import Core
+import 'services/split_tunnel_service.dart';
 
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:window_manager/window_manager.dart';
@@ -26,16 +27,33 @@ Future<void> main() async {
   if (Platform.isWindows) {
       try {
         await windowManager.ensureInitialized();
-        WindowOptions windowOptions = const WindowOptions(
-          size: Size(800, 600),
-          center: true,
+        
+        // Load saved window state
+        final prefs = await SharedPreferences.getInstance();
+        final double? width = prefs.getDouble('window_width');
+        final double? height = prefs.getDouble('window_height');
+        final double? x = prefs.getDouble('window_x');
+        final double? y = prefs.getDouble('window_y');
+        
+        Size size = const Size(800, 600);
+        if (width != null && height != null) {
+          size = Size(width, height);
+        }
+
+        WindowOptions windowOptions = WindowOptions(
+          size: size,
+          center: (x == null || y == null),
           skipTaskbar: false,
           titleBarStyle: TitleBarStyle.normal,
         );
         
-        
-        await windowManager.show();
-        await windowManager.focus();
+        await windowManager.waitUntilReadyToShow(windowOptions, () async {
+          await windowManager.show();
+          await windowManager.focus();
+          if (x != null && y != null) {
+             await windowManager.setPosition(Offset(x, y));
+          }
+        });
         
         // Init Tray
         await _initSystemTray();
@@ -141,6 +159,11 @@ class _MinewireAppState extends State<MinewireApp> {
     _themeMode = widget.initialThemeMode;
     _useDynamicColor = widget.initialUseDynamicColor;
     _usePaleColor = widget.initialUsePaleColor;
+
+    // Initialize Split Tunneling Config
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+        SplitTunnelService.applyConfig(core);
+    });
   }
 
   Future<void> _updateThemeMode(ThemeMode mode) async {
@@ -284,6 +307,30 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver, Wi
     if (_isPreventClose) {
       windowManager.hide();
     }
+  }
+
+  Future<void> _saveWindowState() async {
+      if (!Platform.isWindows) return;
+      // Don't save if minimized or hidden
+      if (!await windowManager.isVisible()) return;
+      if (await windowManager.isMinimized()) return;
+
+      final bounds = await windowManager.getBounds();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('window_width', bounds.width);
+      await prefs.setDouble('window_height', bounds.height);
+      await prefs.setDouble('window_x', bounds.left);
+      await prefs.setDouble('window_y', bounds.top);
+  }
+
+  @override
+  void onWindowResize() {
+      _saveWindowState();
+  }
+
+  @override
+  void onWindowMove() {
+      _saveWindowState();
   }
 
   @override

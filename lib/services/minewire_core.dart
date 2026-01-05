@@ -9,6 +9,7 @@ abstract class MinewireCore {
   Future<bool> isActive();
   Future<int> ping(String serverAddress);
   Future<Map<String, dynamic>> parseLink(String link);
+  Future<void> updateConfig(String rulePaths);
 }
 
 class MinewireCoreAndroid implements MinewireCore {
@@ -52,6 +53,11 @@ class MinewireCoreAndroid implements MinewireCore {
       return jsonDecode(jsonStr);
     }
     return jsonDecode(jsonStr);
+  }
+
+  @override
+  Future<void> updateConfig(String rulePaths) async {
+    await platform.invokeMethod('updateConfig', {"rules": rulePaths});
   }
 }
 
@@ -184,5 +190,11 @@ class MinewireCoreWindows implements MinewireCore {
   Future<Map<String, dynamic>> parseLink(String link) async {
        if (_process == null) await _ensureProcess();
        return await _sendRequest<Map<String, dynamic>>("parseLink", {"link": link});
+  }
+
+  @override
+  Future<void> updateConfig(String rulePaths) async {
+       if (_process == null) await _ensureProcess();
+       await _sendRequest("updateConfig", {"rules": rulePaths});
   }
 }

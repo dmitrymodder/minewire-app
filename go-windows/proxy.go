@@ -210,6 +210,7 @@ func sendUDPOverTunnel(dest string, data []byte, udpListener net.PacketConn, cli
 func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodConnect {
 		dest := r.Host
+		logDebug("HTTP CONNECT: %s", dest)
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
 			http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
@@ -233,6 +234,49 @@ func proxyToTunnel(localConn net.Conn, dest string, isSocks bool) {
 			fmt.Println("Recovered in proxyToTunnel:", r)
 		}
 	}()
+
+	host, _, _ := net.SplitHostPort(dest)
+
+	// Check Split Tunnel
+	shouldBypass := false
+
+	if net.ParseIP(host) != nil {
+		if GetSplitTunnelManager().ShouldBypass(host) {
+			shouldBypass = true
+		}
+	} else {
+		// Attempt to resolve domain
+		ips, err := net.LookupIP(host)
+		if err == nil {
+			for _, ip := range ips {
+				if GetSplitTunnelManager().ShouldBypass(ip.String()) {
+					shouldBypass = true
+					break
+				}
+			}
+		}
+	}
+
+	if shouldBypass {
+		// Route Direct via Default Gateway
+		logDebug("BYPASS: %s", dest)
+		// Direct connection logic...
+		conn, err := net.DialTimeout("tcp", dest, 30*time.Second)
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+
+		if isSocks {
+			localConn.Write([]byte{0x05, 0x00, 0, 1, 0, 0, 0, 0, 0, 0})
+		}
+
+		go io.Copy(conn, localConn)
+		io.Copy(localConn, conn)
+		return
+	}
+
+	logDebug("VPN ROUTE: %s", dest)
 
 	sessionLock.Lock()
 	sess := session

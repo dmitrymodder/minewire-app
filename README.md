@@ -65,6 +65,9 @@ cd minewire-app
 # Install dependencies
 flutter pub get
 
+cd go-windows
+go build -o ../build/windows/x64/runner/Release/minewire.exe . 
+cd ..
 # Build Windows app
 flutter build windows
 

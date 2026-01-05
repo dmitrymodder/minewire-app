@@ -10,8 +10,21 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"syscall"
 	"time"
 )
+
+var dialer = &net.Dialer{
+	Timeout:   10 * time.Second,
+	KeepAlive: 30 * time.Second,
+	Control: func(network, address string, c syscall.RawConn) error {
+		return c.Control(func(fd uintptr) {
+			if protector != nil {
+				protector.Protect(int(fd))
+			}
+		})
+	},
+}
 
 func handleSocks(localConn net.Conn) {
 	defer func() {
@@ -236,6 +249,27 @@ func proxyToTunnel(localConn net.Conn, dest string, isSocks bool) {
 			fmt.Println("Recovered in proxyToTunnel:", r)
 		}
 	}()
+
+	host, _, _ := net.SplitHostPort(dest)
+	// Check Split Tunnel
+	if GetSplitTunnelManager().ShouldBypass(host) {
+		// Route Direct
+		// fmt.Printf("Direct Route: %s\n", dest)
+		remoteConn, err := dialer.Dial("tcp", dest)
+		if err != nil {
+			// fmt.Printf("Direct Dial Failed: %v\n", err)
+			return // Or fallback? No, direct fail means fail.
+		}
+		defer remoteConn.Close()
+
+		if isSocks {
+			localConn.Write([]byte{0x05, 0x00, 0, 1, 0, 0, 0, 0, 0, 0})
+		}
+
+		go io.Copy(remoteConn, localConn)
+		io.Copy(localConn, remoteConn)
+		return
+	}
 
 	sessionLock.Lock()
 	sess := session

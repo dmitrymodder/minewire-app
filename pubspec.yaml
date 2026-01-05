@@ -1,7 +1,7 @@
 name: minewire_app
 description: "Minewire VPN Tunnel Client"
 publish_to: "none"
-version: 25.12.4+1
+version: 26.1.1+1
 
 environment:
   sdk: ^3.5.0
@@ -19,6 +19,7 @@ dependencies:
   uuid: ^3.0.7
   system_tray: ^2.0.0
   window_manager: ^0.5.1
+  path_provider: ^2.1.2
 
 dev_dependencies:
   flutter_test:
@@ -34,6 +35,7 @@ flutter:
     - assets/logo_full.svg
     - assets/icon_foreground.png
     - assets/app_icon.ico
+    - assets/geoip/
 
 flutter_launcher_icons:
   android: "launcher_icon"

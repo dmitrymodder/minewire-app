@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/yl2chen/cidranger v1.0.2 // indirect
 	golang.org/x/mobile v0.0.0-20251209145715-2553ed8ce294 // indirect
 	golang.org/x/mod v0.31.0 // indirect
 	golang.org/x/net v0.48.0 // indirect

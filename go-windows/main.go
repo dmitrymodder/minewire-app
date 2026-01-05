@@ -9,6 +9,8 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -27,7 +29,25 @@ var (
 	listener   net.Listener
 	httpServer *http.Server
 	stopSignal chan struct{}
+	debugLog   *os.File
 )
+
+func init() {
+	var err error
+	tempDir := os.TempDir()
+	logPath := filepath.Join(tempDir, "minewire_debug.log")
+	debugLog, err = os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		// ignore
+	}
+	logDebug("Minewire Core Initialized")
+}
+
+func logDebug(format string, v ...interface{}) {
+	if debugLog != nil {
+		fmt.Fprintf(debugLog, time.Now().Format(time.RFC3339)+" "+format+"\n", v...)
+	}
+}
 
 // --- Command Structures ---
 type Command struct {
@@ -42,6 +62,7 @@ type CommandArgs struct {
 	Password      string `json:"password"`
 	ProxyType     string `json:"proxyType"`
 	Link          string `json:"link"`
+	Rules         string `json:"rules"` // Comma separated paths to zone files
 }
 
 type Response struct {
@@ -107,6 +128,18 @@ func handleCommand(cmd Command) {
 	case "parseLink":
 		res := ParseConnectionLink(cmd.Args.Link)
 		respond(Response{ID: cmd.ID, Success: true, Data: res})
+
+	case "updateConfig":
+		paths := strings.Split(cmd.Args.Rules, ",")
+		st := GetSplitTunnelManager()
+
+		logDebug("Updating Rules: %s", cmd.Args.Rules)
+
+		if err := st.UpdateRules(paths); err != nil {
+			respond(Response{ID: cmd.ID, Success: false, Error: err.Error()})
+		} else {
+			respond(Response{ID: cmd.ID, Success: true})
+		}
 
 	default:
 		respond(Response{ID: cmd.ID, Success: false, Error: "Unknown method"})

@@ -11,8 +11,9 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.service.quicksettings.TileService
 import com.uberwelt.libminewire.minewire.Minewire
+import com.uberwelt.libminewire.minewire.ProtectCallback
 
-class MinewireVpnService : VpnService() {
+class MinewireVpnService : VpnService(), ProtectCallback {
 
     private var vpnInterface: ParcelFileDescriptor? = null
     private val CHANNEL_ID = "MinewireVPN"
@@ -37,6 +38,9 @@ class MinewireVpnService : VpnService() {
         // 3. Запускаем Go Backend и VPN интерфейс в фоновом потоке
         Thread {
             try {
+                // Set Protect Callback
+                Minewire.setProtectCallback(this)
+
                 // 3.1 Запускаем SOCKS сервер (блокирующий вызов в Go, поэтому в треде)
                 // Важно: Сначала запускаем SOCKS, потом VPN
                 Minewire.start(localPort, serverAddr, password, "socks5") 
@@ -194,5 +198,11 @@ class MinewireVpnService : VpnService() {
     override fun onDestroy() {
         stopVpn()
         super.onDestroy()
+    }
+
+    override fun protect(fd: Long): Boolean {
+        // Go passes `int` fd, but gomobile might map it to Long. 
+        // VpnService.protect takes Int.
+        return this.protect(fd.toInt())
     }
 }
