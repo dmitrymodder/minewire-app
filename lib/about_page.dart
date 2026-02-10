@@ -34,7 +34,7 @@ class _AboutPageState extends State<AboutPage> {
     }
 
     setState(() {
-      _version = '26.1.1';
+      _version = '26.2.1';
       _platformName = platform;
     });
   }

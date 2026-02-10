@@ -145,10 +145,7 @@ func connectToServer() (*yamux.Session, error) {
 		aead:      aead,
 		rawReader: reader,
 		writeBuf:  bytes.NewBuffer(make([]byte, 0, 16384)),
-		stopFlush: make(chan struct{}),
 	}
-	// Start flush loop
-	go mc.flushLoop()
 
 	go startBackgroundNoise(conn)
 	go startReaderLoop(mc, pw, conn, aead)
@@ -156,7 +153,7 @@ func connectToServer() (*yamux.Session, error) {
 	conf := yamux.DefaultConfig()
 	conf.KeepAliveInterval = 30 * time.Second
 	conf.ConnectionWriteTimeout = 15 * time.Second
-	conf.MaxStreamWindowSize = 16 * 1024 * 1024
+	conf.MaxStreamWindowSize = 512 * 1024 // 512KB (Optimized for mix of small/large packets)
 	conf.StreamOpenTimeout = 30 * time.Second
 	conf.LogOutput = io.Discard
 	return yamux.Client(mc, conf)
@@ -328,31 +325,19 @@ type MinecraftConn struct {
 	aead      cipher.AEAD
 	rawReader io.Reader
 
-	writeBuf  *bytes.Buffer
-	writeMu   sync.Mutex
-	stopFlush chan struct{}
+	writeBuf   *bytes.Buffer
+	writeMu    sync.Mutex
+	flushTimer *time.Timer
 }
 
 func (mc *MinecraftConn) Read(b []byte) (int, error) { return mc.r.Read(b) }
 
-func (mc *MinecraftConn) flushLoop() {
-	ticker := time.NewTicker(10 * time.Millisecond)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-mc.stopFlush:
-			return
-		case <-ticker.C:
-			mc.writeMu.Lock()
-			if mc.writeBuf.Len() > 0 {
-				mc.flushLocked()
-			}
-			mc.writeMu.Unlock()
-		}
-	}
-}
-
 func (mc *MinecraftConn) flushLocked() error {
+	if mc.flushTimer != nil {
+		mc.flushTimer.Stop()
+		mc.flushTimer = nil
+	}
+
 	if mc.writeBuf.Len() == 0 {
 		return nil
 	}
@@ -375,29 +360,35 @@ func (mc *MinecraftConn) Write(b []byte) (int, error) {
 	mc.writeMu.Lock()
 	defer mc.writeMu.Unlock()
 
-	// If packet is huge (>16KB), flush current buffer then flush new data directly (or buffer it)
-	// Simple strategy: Always buffer, if buffer > Threshold -> Flush
-	// Threshold = 8KB (Standard TCP MSS is 1460, but large writes are fine here)
-
 	n, err := mc.writeBuf.Write(b)
 	if err != nil {
 		return 0, err
 	}
 
-	if mc.writeBuf.Len() >= 8192 {
+	// 4KB threshold for immediate flush (Consistent with server)
+	if mc.writeBuf.Len() >= 4096 {
 		if err := mc.flushLocked(); err != nil {
-			return n, err // We technically wrote to buffer, but flush failed.
+			return n, err
+		}
+	} else {
+		// Delayed flush for small packets
+		if mc.flushTimer == nil {
+			mc.flushTimer = time.AfterFunc(5*time.Millisecond, func() {
+				mc.writeMu.Lock()
+				defer mc.writeMu.Unlock()
+				mc.flushLocked()
+			})
 		}
 	}
 	return n, nil
 }
 
 func (mc *MinecraftConn) Close() error {
-	select {
-	case <-mc.stopFlush:
-	default:
-		close(mc.stopFlush)
+	mc.writeMu.Lock()
+	if mc.flushTimer != nil {
+		mc.flushTimer.Stop()
 	}
+	mc.writeMu.Unlock()
 	return mc.conn.Close()
 }
 func (mc *MinecraftConn) LocalAddr() net.Addr                { return mc.conn.LocalAddr() }
