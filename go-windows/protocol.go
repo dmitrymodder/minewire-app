@@ -31,16 +31,17 @@ func ReadVarInt(r io.ByteReader) (int, error) {
 }
 
 func WriteVarInt(w io.Writer, value int) error {
+	ux := uint32(value)
 	for {
-		temp := byte(value & 0x7F)
-		value >>= 7
-		if value != 0 {
+		temp := byte(ux & 0x7F)
+		ux >>= 7
+		if ux != 0 {
 			temp |= 0x80
 		}
 		if _, err := w.Write([]byte{temp}); err != nil {
 			return err
 		}
-		if value == 0 {
+		if ux == 0 {
 			break
 		}
 	}

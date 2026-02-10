@@ -60,3 +60,11 @@ build_log.txt
 # Local test binaries
 *.test
 *.exe
+
+# Android keystore files (SECURITY CRITICAL)
+# Never commit signing keys or credentials
+/android/key.properties
+/android/**/*.jks
+/android/**/*.keystore
+*.jks
+*.keystore

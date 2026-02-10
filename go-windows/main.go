@@ -2,8 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -127,6 +130,10 @@ func handleCommand(cmd Command) {
 
 	case "parseLink":
 		res := ParseConnectionLink(cmd.Args.Link)
+		respond(Response{ID: cmd.ID, Success: true, Data: res})
+
+	case "getServerStatus":
+		res := GetServerStatus(cmd.Args.ServerAddress)
 		respond(Response{ID: cmd.ID, Success: true, Data: res})
 
 	case "updateConfig":
@@ -262,6 +269,81 @@ func Ping(serverAddr string) int64 {
 	}
 	conn.Close()
 	return time.Since(start).Milliseconds()
+}
+
+// GetServerStatus queries the server for MOTD, Icon, and Player count.
+func GetServerStatus(serverAddr string) string {
+	conn, err := net.DialTimeout("tcp", serverAddr, 5*time.Second)
+	if err != nil {
+		return fmt.Sprintf(`{"error": "%s"}`, err.Error())
+	}
+	defer conn.Close()
+
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		tcpConn.SetNoDelay(true)
+	}
+
+	// 1. Handshake State 1 (Status)
+	host, portStr, _ := net.SplitHostPort(serverAddr)
+	port := 25565
+	if p, err := parsePort(portStr); err == nil {
+		port = p
+	}
+
+	buf := new(bytes.Buffer)
+	WriteVarInt(buf, -1)          // Protocol Version
+	WriteString(buf, host)        // Host
+	WriteShort(buf, uint16(port)) // Port
+	WriteVarInt(buf, 1)           // State 1 (Status)
+	if err := WritePacket(conn, 0x00, buf.Bytes()); err != nil {
+		return fmt.Sprintf(`{"error": "%s"}`, err.Error())
+	}
+
+	// 2. Status Request
+	if err := WritePacket(conn, 0x00, []byte{}); err != nil {
+		return fmt.Sprintf(`{"error": "%s"}`, err.Error())
+	}
+
+	// 3. Read Response
+	br := bufio.NewReader(conn)
+
+	// Read Packet Length
+	_, err = ReadVarInt(br)
+	if err != nil {
+		return fmt.Sprintf(`{"error": "Read Len: %s"}`, err.Error())
+	}
+	// Read Packet ID
+	pid, err := ReadVarInt(br)
+	if err != nil {
+		return fmt.Sprintf(`{"error": "Read PID: %s"}`, err.Error())
+	}
+	if pid != 0x00 {
+		return fmt.Sprintf(`{"error": "Invalid PID: %d"}`, pid)
+	}
+
+	// Read JSON String
+	jsonStr, err := ReadString(br)
+	if err != nil {
+		return fmt.Sprintf(`{"error": "Read String: %s"}`, err.Error())
+	}
+
+	return jsonStr
+}
+
+func parsePort(s string) (int, error) {
+	var n int
+	for _, ch := range []byte(s) {
+		ch -= '0'
+		if ch > 9 {
+			return 0, fmt.Errorf("invalid port")
+		}
+		n = n*10 + int(ch)
+	}
+	return n, nil
+}
+
+func WriteShort(w io.Writer, v uint16) {
+	binary.Write(w, binary.BigEndian, v)
 }
 
 func ParseConnectionLink(link string) map[string]string {

@@ -63,6 +63,14 @@ class MainActivity: FlutterActivity() {
                     result.error("PARSE_ERROR", e.message, null)
                 }
 
+            } else if (call.method == "getServerStatus") {
+                val serverAddress = call.argument<String>("serverAddress") ?: ""
+                Thread {
+                    val json = Minewire.getServerStatus(serverAddress)
+                    runOnUiThread {
+                        result.success(json)
+                    }
+                }.start()
             } else if (call.method == "updateConfig") {
                 val rules = call.argument<String>("rules") ?: ""
                 Minewire.updateConfig(rules)

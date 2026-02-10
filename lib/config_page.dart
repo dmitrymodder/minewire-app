@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'models/profile.dart'; // Profile model
 import 'services/minewire_core.dart';
+import 'widgets/server_info_card.dart';
 
 class ConfigPage extends StatefulWidget {
   final String? activeProfileId;
@@ -323,8 +324,21 @@ class _ConfigPageState extends State<ConfigPage> {
     );
   }
 
+// ... (existing imports)
+
+// ... (inside _ConfigPageState)
+
   @override
   Widget build(BuildContext context) {
+    // Find active profile address
+    String activeAddress = "";
+    if (widget.activeProfileId != null) {
+        final active = _profiles.where((p) => p.id == widget.activeProfileId).firstOrNull;
+        if (active != null) {
+            activeAddress = active.serverAddress;
+        }
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Профили'),
@@ -337,60 +351,69 @@ class _ConfigPageState extends State<ConfigPage> {
              ),
         ],
       ),
-      body: _profiles.isEmpty
-          ? const Center(child: Text("Нет профилей"))
-          : ListView.builder(
-              itemCount: _profiles.length,
-              itemBuilder: (context, index) {
-                final profile = _profiles[index];
-                final isActive = profile.id == widget.activeProfileId;
-                
-                return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  elevation: isActive ? 4 : 1,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: isActive 
-                        ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
-                        : BorderSide.none,
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    title: Text(
-                      profile.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isActive ? Theme.of(context).colorScheme.primary : null,
-                      ),
+      body: Column(
+        children: [
+            Expanded(
+              child: _profiles.isEmpty
+                  ? const Center(child: Text("Нет профилей"))
+                  : ListView.builder(
+                      itemCount: _profiles.length,
+                      itemBuilder: (context, index) {
+                        final profile = _profiles[index];
+                        final isActive = profile.id == widget.activeProfileId;
+                        
+                        return Card(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          elevation: isActive ? 4 : 1,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: isActive 
+                                ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
+                                : BorderSide.none,
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            title: Text(
+                              profile.name,
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: isActive ? Theme.of(context).colorScheme.primary : null,
+                              ),
+                            ),
+                            subtitle: Text(
+                               "${profile.serverAddress}", 
+                               maxLines: 1, 
+                               overflow: TextOverflow.ellipsis
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit_outlined),
+                                  onPressed: () => _editProfile(profile),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () => _deleteProfile(profile),
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              widget.onProfileSelected(profile.id);
+                            },
+                            leading: isActive 
+                                ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                                : const Icon(Icons.circle_outlined),
+                          ),
+                        );
+                      },
                     ),
-                    subtitle: Text(
-                       "${profile.serverAddress}", 
-                       maxLines: 1, 
-                       overflow: TextOverflow.ellipsis
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined),
-                          onPressed: () => _editProfile(profile),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _deleteProfile(profile),
-                        ),
-                      ],
-                    ),
-                    onTap: () {
-                      widget.onProfileSelected(profile.id);
-                    },
-                    leading: isActive 
-                        ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
-                        : const Icon(Icons.circle_outlined),
-                  ),
-                );
-              },
             ),
+            // Server Info Card at the bottom
+            if (activeAddress.isNotEmpty)
+                ServerInfoCard(serverAddress: activeAddress),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddOptions,
         child: const Icon(Icons.add),

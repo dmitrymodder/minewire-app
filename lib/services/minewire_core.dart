@@ -10,6 +10,7 @@ abstract class MinewireCore {
   Future<int> ping(String serverAddress);
   Future<Map<String, dynamic>> parseLink(String link);
   Future<void> updateConfig(String rulePaths);
+  Future<Map<String, dynamic>> getServerStatus(String serverAddress);
 }
 
 class MinewireCoreAndroid implements MinewireCore {
@@ -58,6 +59,16 @@ class MinewireCoreAndroid implements MinewireCore {
   @override
   Future<void> updateConfig(String rulePaths) async {
     await platform.invokeMethod('updateConfig', {"rules": rulePaths});
+  }
+  
+  @override
+  Future<Map<String, dynamic>> getServerStatus(String serverAddress) async {
+    try {
+        final String jsonStr = await platform.invokeMethod('getServerStatus', {"serverAddress": serverAddress});
+        return jsonDecode(jsonStr);
+    } catch (e) {
+        return {"error": e.toString()};
+    }
   }
 }
 
@@ -196,5 +207,22 @@ class MinewireCoreWindows implements MinewireCore {
   Future<void> updateConfig(String rulePaths) async {
        if (_process == null) await _ensureProcess();
        await _sendRequest("updateConfig", {"rules": rulePaths});
+  }
+  
+  @override
+  Future<Map<String, dynamic>> getServerStatus(String serverAddress) async {
+       if (_process == null) await _ensureProcess();
+       try {
+           // On Windows we might need to cast or parse differently if the IPC returns stringified JSON inside data?
+           // The Go side returns string. The IPC bridge should probably handle unmarshalling if possible, 
+           // OR we act like parseLink where it returns map.
+           // Let's assume on Windows the IPC returns the string from Go, so we parse it here.
+           // Wait, handleResponse decodes the outer JSON. 
+           // If GetServerStatus returns a STRING, then `msg['data']` is a string.
+           final String jsonStr = await _sendRequest<String>("getServerStatus", {"serverAddress": serverAddress});
+           return jsonDecode(jsonStr);
+       } catch (e) {
+           return {"error": e.toString()};
+       }
   }
 }
