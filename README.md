@@ -1,5 +1,5 @@
 # Minewire Client
-
+# Client is outdated. Use [minewire-cli](https://github.com/dmitrymodder/minewire-cli) instead of this project.
 Cross-platform VPN client that masquerades as a Minecraft client to establish encrypted tunnels and bypass network restrictions.
 
 ## Features
